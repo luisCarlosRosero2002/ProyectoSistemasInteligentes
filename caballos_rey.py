@@ -2,6 +2,9 @@
 Cerrados = []
 Abiertos = []
 Eactual = []
+Pfinales = []
+CRey = []
+flat = False
 
 def ValorHeuristica(CaballoActual,rey,vectorjaque):
 
@@ -16,17 +19,26 @@ def ValorHeuristica(CaballoActual,rey,vectorjaque):
     conjunto_vectorjaque = {tuple(d.items()) for d in vectorjaque}
     # conjunto_rey = {tuple(d.items()) for d in rey}
 
+    interseccion = conjunto_PMovimientos & conjunto_vectorjaque
+    interseccion = [dict(tupla) for tupla in interseccion]
+    repetidos = any(elemento in CRey for elemento in interseccion)
+# 
+    if len(interseccion) > 0 and not repetidos:
+        herustica -= len(interseccion) * 10
 
-    union = conjunto_PMovimientos & conjunto_vectorjaque
-
-    if len(union) > 0:
-        herustica -= len(union) * 10
-
-    if rey[0] in PMovimientos:
+    if rey[0] in PMovimientos and not flat :
         herustica +=50
+
+    if rey[0] in PMovimientos and  flat:
+        herustica -=50
 
     if CaballoActual in vectorjaque :
         herustica +=50
+# 
+    if repetidos:
+        herustica +=50
+
+
 
 
     
@@ -76,6 +88,7 @@ def movimientoCaballo(caballo , rey , vectorjaque):
     
     movimientos = list(filter(lambda elemento: (elemento["x"] < 9 and elemento["x"] > 0)  and  (elemento["y"] < 9 and elemento["y"] > 0 ) , movimientos))
                     
+    movimientos = list(filter(lambda elemento: elemento not in Pfinales , movimientos))
     # Abiertos.extend(movimientos)
     # Abiertos.sort(key = lambda x: x["h"], reverse=True)
 
@@ -151,13 +164,11 @@ def traductor(posicion):
 
 
 def main():
-    # Caballos = []
-    # Rey = []
-    # vector_jaque = []
-    Caballos = [{"x": "A", "y": 8},{"x": "H", "y": 7},{"x": "G", "y": 1},
-                {"x": "H", "y": 1}] 
+
+    Caballos = [{"x": "A", "y": 8},{"x": "E", "y": 8},{"x": "H", "y": 8},
+                {"x": "B", "y": 5}] 
     # Caballos = [{"x": "H", "y": 1}] 
-    Rey = [{"x": "B", "y": 1}]
+    Rey = [{"x": "E", "y": 1}]
     # for i in range(1,5):
     #     print(f"\nIngrese las posiciones del caballo {i}")
     #     Caballos.append({"x":input("Eje x: "),
@@ -183,40 +194,61 @@ def main():
     
     for i in Caballos:
 
-        # moves = movimientoCaballo(i,Rey,vector_jaque)
+        global flat
         Eactual = i
+        Cerrados.clear()
 
+        if Caballos[len(Caballos)-1] == i : flat = True
         while True :
 
             movimientosParciales = movimientoCaballo(Eactual,Rey,vector_jaque)
+            Abiertos.extend(movimientosParciales)
+
+            movimientosParciales = list(filter(lambda elemento: elemento not in Caballos , movimientosParciales))
             conjunto_moves = {tuple(d.items()) for d in movimientosParciales}
             conjunto_vectorjaque = {tuple(d.items()) for d in vector_jaque}
-            union = conjunto_moves & conjunto_vectorjaque
+            # conjuntoCubiertas = set(tuple(sorted(diccionario.items())) for diccionario in CRey)
+            conjuntoRey = set(tuple(sorted(diccionario.items())) for diccionario in Rey)
+
+            interseccion = conjunto_moves & (conjunto_vectorjaque | conjuntoRey)
 
             for j in movimientosParciales:
                 j["h"] = ValorHeuristica(j,Rey,vector_jaque)
+
+            Cerrados.append(Eactual)
+            interseccion = [dict(tupla) for tupla in interseccion]
+
+            repetidos = any(elemento in CRey for elemento in interseccion)
+
+            if (len(interseccion) > 0) and ({"x":Eactual["x"],"y":Eactual["y"]} not in vector_jaque) and not(repetidos) : 
+                aux = min(Abiertos, key= lambda x:x["h"])
+
+                if aux["h"] <= Eactual["h"] :
+                    movimientosParciales = movimientoCaballo(aux,Rey,vector_jaque)
+                    movimientosParciales = list(filter(lambda elemento: elemento not in Caballos , movimientosParciales))
+                    conjunto_moves = {tuple(d.items()) for d in movimientosParciales}
+                    interseccion = conjunto_moves & (conjunto_vectorjaque | conjuntoRey)
+                    Cerrados.append(aux)
+                    interseccion = [dict(tupla) for tupla in interseccion]
+                    CRey.extend(interseccion)
+                    Pfinales.append({"x":aux["x"],"y":aux["y"]})
+                    if (len(interseccion) > 0):
+                        break
+
+
+            Abiertos.sort(key= lambda x:x["h"])
+            Eactual = min(Abiertos, key= lambda x:x["h"])
             
-            print(movimientosParciales)
+            del Abiertos[Abiertos.index(Eactual)]
 
-            nodoPadre = Eactual
-            menor = min(movimientosParciales, key= lambda x:x["h"])
-            Eactual = menor if menor["h"] < Eactual["h"] else Eactual
-            
-            print(Eactual)
-            if Eactual["h"] <= nodoPadre["h"] and len(union) > 0 : break
+        
+        print(Cerrados)
+        Abiertos.clear()
 
-
-
-    # print(movimientosParciales)
-
-    print(Caballos)
-
-
-
-
+        
 
 main()
-# imprimirTablero()
+
 
 
 
